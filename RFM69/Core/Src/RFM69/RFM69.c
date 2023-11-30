@@ -162,7 +162,7 @@ bool RFM69_initialize(uint8_t freqBand, uint8_t nodeID, uint16_t networkID)
   // Disable it during initialization so we always start from a known state.
   RFM69_encrypt(0);
 
-  RFM69_setHighPower(ISRFM69HW); // called regardless if it's a RFM69W or RFM69HW
+  RFM69_setHighPower(); // called regardless if it's a RFM69W or RFM69HW
   RFM69_setMode(RF69_MODE_STANDBY);
   Timeout_SetTimeout1(50);
   while (((RFM69_readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00) && !Timeout_IsTimeout1()); // wait for ModeReady
@@ -498,9 +498,9 @@ void RFM69_promiscuous(bool onOff)
 }
 
 // for RFM69HW only: you must call RFM69_setHighPower(true) after initialize() or else transmission won't work
-void RFM69_setHighPower(bool onOff) {
-  RFM69_writeReg(REG_OCP, onOff ? RF_OCP_OFF : RF_OCP_ON);
-  if (onOff) // turning ON
+void RFM69_setHighPower() {
+  RFM69_writeReg(REG_OCP, ISRFM69HW ? RF_OCP_OFF : RF_OCP_ON);
+  if (ISRFM69HW) // turning ON
     RFM69_writeReg(REG_PALEVEL, (RFM69_readReg(REG_PALEVEL) & 0x1F) | RF_PALEVEL_PA1_ON | RF_PALEVEL_PA2_ON); // enable P1 & P2 amplifier stages
   else
     RFM69_writeReg(REG_PALEVEL, RF_PALEVEL_PA0_ON | RF_PALEVEL_PA1_OFF | RF_PALEVEL_PA2_OFF | _powerLevel); // enable P0 only
