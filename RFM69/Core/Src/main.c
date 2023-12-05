@@ -14,14 +14,35 @@
   * If no LICENSE file comes with this software, it is provided AS-IS.
   *
   ******************************************************************************
+  ******************************************************************************
+
+ SAMPLE DEBUG CODE
+
+ TEXT
+ logBufLen = sprintf(logBuf, "Text\r\n");
+ HAL_UART_Transmit(&huart2, (uint8_t *)logBuf, logBufLen, 100);
+
+ INT
+ logBufLen = sprintf(logBuf, "My Number %d\r\n",myNumber);
+ HAL_UART_Transmit(&huart2, (uint8_t *)logBuf, logBufLen, 100);
+
+ LED
+ HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+ HAL_Delay(1000);
+
+
+  ******************************************************************************
   */
+
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "stdbool.h"
+#include "RFM69.h"
+#include "RFM69_ext.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -94,12 +115,84 @@ int main(void)
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
 
+ char logBuf[100];
+ int logBufLen;
+
+
+  uint16_t networkID = 210; // a.k.a. Network Group
+  uint8_t nodeID = 1;
+  uint16_t freqBand = 433;
+
+
+  /* available frequency bands
+  #define RF69_315MHZ            315
+  #define RF69_433MHZ            433
+  #define RF69_868MHZ            868
+  #define RF69_915MHZ            915
+  see registers.h for even more.
+  */
+
+  uint8_t toAddress = 1;
+  bool requestACK = false;
+
+  typedef struct
+  {
+  	unsigned long nodeId; //store this nodeId
+  	unsigned long uptime; //uptime in ms
+  	//float         temp;   //temperature maybe?
+  }
+  Payload;
+  Payload theData;
+
+  //Initalize the radio
+  HAL_Delay(10);
+  // TODO: RFM69_RST();
+  HAL_Delay(10);
+  if (RFM69_initialize(freqBand, nodeID, networkID))
+  {
+  	logBufLen = sprintf(logBuf, "RFM69 Initialized. Freq %dMHz. Node %d. Group %d.\r\n", freqBand, nodeID, networkID);
+  	HAL_UART_Transmit(&huart2, (uint8_t *)logBuf, logBufLen, 100);
+  }
+  else
+  {
+	logBufLen = sprintf(logBuf,"RFM69 not connected.\r\n");
+	HAL_UART_Transmit(&huart2, (uint8_t *)logBuf, logBufLen, 100);
+  }
+  RFM69_readAllRegs();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+	/*
+    // SAMPLE RECEIVE CODE
+	if (RFM69_ReadDIO0Pin())
+	{
+	  RFM69_interruptHandler();
+	}
+
+	if (RFM69_receiveDone())
+	{
+	  logBufLen = sprintf(logBuf,"Payload Received!\r\n");
+	  HAL_UART_Transmit(&huart2, (uint8_t *)logBuf, logBufLen, 100);
+
+	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0); // turn off LED
+	}
+	*/
+
+	// SAMPLE TRANSMIT CODE
+	theData.nodeId = 20;
+	theData.uptime = HAL_GetTick();
+	RFM69_send(toAddress, (const void *)(&theData), sizeof(theData), requestACK);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 1); // turn on LED
+	HAL_Delay(1);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0); // turn off LED
+	HAL_Delay(2000);  // send every ____ milliseconds.
+	logBufLen = sprintf(logBuf, "Payload Sent!\r\n");
+	HAL_UART_Transmit(&huart2, (uint8_t *)logBuf, logBufLen, 100);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -126,15 +219,16 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 1;
-  RCC_OscInitStruct.PLL.PLLN = 16;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLM = 2;
+  RCC_OscInitStruct.PLL.PLLN = 40;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV7;
   RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
-  RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
+  RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV4;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -149,7 +243,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
   {
     Error_Handler();
   }
@@ -178,7 +272,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -250,13 +344,19 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(RFM69_CS_GPIO_Port, RFM69_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, RFM69_RST_Pin|LD3_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : EXAMPLE_IN_Pin RFM69_IRQ_Pin */
-  GPIO_InitStruct.Pin = EXAMPLE_IN_Pin|RFM69_IRQ_Pin;
+  /*Configure GPIO pin : EXAMPLE_IN_Pin */
+  GPIO_InitStruct.Pin = EXAMPLE_IN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(EXAMPLE_IN_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : RFM69_IRQ_Pin */
+  GPIO_InitStruct.Pin = RFM69_IRQ_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(RFM69_IRQ_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : RFM69_CS_Pin */
   GPIO_InitStruct.Pin = RFM69_CS_Pin;
@@ -265,12 +365,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(RFM69_CS_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LD3_Pin */
-  GPIO_InitStruct.Pin = LD3_Pin;
+  /*Configure GPIO pins : RFM69_RST_Pin LD3_Pin */
+  GPIO_InitStruct.Pin = RFM69_RST_Pin|LD3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD3_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */

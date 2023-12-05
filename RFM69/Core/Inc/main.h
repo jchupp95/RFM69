@@ -67,6 +67,8 @@ void Error_Handler(void);
 #define RFM69_IRQ_GPIO_Port GPIOA
 #define RFM69_CS_Pin GPIO_PIN_5
 #define RFM69_CS_GPIO_Port GPIOA
+#define RFM69_RST_Pin GPIO_PIN_0
+#define RFM69_RST_GPIO_Port GPIOB
 #define SWDIO_Pin GPIO_PIN_13
 #define SWDIO_GPIO_Port GPIOA
 #define SWCLK_Pin GPIO_PIN_14
@@ -77,7 +79,8 @@ void Error_Handler(void);
 #define LD3_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-
+#define true 1
+#define false 0
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
