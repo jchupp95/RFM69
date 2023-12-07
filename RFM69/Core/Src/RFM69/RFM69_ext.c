@@ -64,7 +64,7 @@ void SerialPrint(char* debugString)            // function to print to serial po
 }
 
 
-static uint32_t thistimeout1;
+static uint32_t thistimeout1 = 100;
 bool Timeout_IsTimeout1(void)      // function for timeout handling, checks if previously set timeout expired
 {
   if(HAL_GetTick() >= thistimeout1)

@@ -117,11 +117,12 @@ int main(void)
 
  char logBuf[100];
  int logBufLen;
+ bool radioInitalized;
 
 
   uint16_t networkID = 210; // a.k.a. Network Group
   uint8_t nodeID = 1;
-  uint16_t freqBand = 433;
+  uint16_t freqBand = 915;
 
 
   /* available frequency bands
@@ -152,46 +153,61 @@ int main(void)
   {
   	logBufLen = sprintf(logBuf, "RFM69 Initialized. Freq %dMHz. Node %d. Group %d.\r\n", freqBand, nodeID, networkID);
   	HAL_UART_Transmit(&huart2, (uint8_t *)logBuf, logBufLen, 100);
+
+  	RFM69_readAllRegs();
+  	radioInitalized = 1;
   }
   else
   {
 	logBufLen = sprintf(logBuf,"RFM69 not connected.\r\n");
 	HAL_UART_Transmit(&huart2, (uint8_t *)logBuf, logBufLen, 100);
+	radioInitalized = 0;
   }
-  RFM69_readAllRegs();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
-	/*
-    // SAMPLE RECEIVE CODE
-	if (RFM69_ReadDIO0Pin())
-	{
-	  RFM69_interruptHandler();
-	}
+	HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
 
-	if (RFM69_receiveDone())
+	if (radioInitalized)
 	{
-	  logBufLen = sprintf(logBuf,"Payload Received!\r\n");
+	  /*
+      // SAMPLE RECEIVE CODE
+	  if (RFM69_ReadDIO0Pin())
+	  {
+	    RFM69_interruptHandler();
+	  }
+
+	  if (RFM69_receiveDone())
+	  {
+	    logBufLen = sprintf(logBuf,"Payload Received!\r\n");
+	    HAL_UART_Transmit(&huart2, (uint8_t *)logBuf, logBufLen, 100);
+
+	    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0); // turn off LED
+	  }
+	  */
+
+	  // SAMPLE TRANSMIT CODE
+	  theData.nodeId = 20;
+	  theData.uptime = HAL_GetTick();
+	  RFM69_send(toAddress, (const void *)(&theData), sizeof(theData), requestACK);
+
+
+	  logBufLen = sprintf(logBuf, "Payload Sent!\r\n");
 	  HAL_UART_Transmit(&huart2, (uint8_t *)logBuf, logBufLen, 100);
 
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0); // turn off LED
+	  HAL_Delay(2000);  // send every ____ milliseconds.
 	}
-	*/
+	else
+	{
+      logBufLen = sprintf(logBuf,"RFM69 not connected.\r\n");
+	  HAL_UART_Transmit(&huart2, (uint8_t *)logBuf, logBufLen, 100);
 
-	// SAMPLE TRANSMIT CODE
-	theData.nodeId = 20;
-	theData.uptime = HAL_GetTick();
-	RFM69_send(toAddress, (const void *)(&theData), sizeof(theData), requestACK);
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 1); // turn on LED
-	HAL_Delay(1);
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0); // turn off LED
-	HAL_Delay(2000);  // send every ____ milliseconds.
-	logBufLen = sprintf(logBuf, "Payload Sent!\r\n");
-	HAL_UART_Transmit(&huart2, (uint8_t *)logBuf, logBufLen, 100);
+	  HAL_Delay(2000);
+	}
 
     /* USER CODE END WHILE */
 
