@@ -68,7 +68,7 @@
 #define RFM69_CTL_REQACK    0x40
 
 //
-#define ISRFM69HW  0
+#define ISRFM69HW  1
 
 // used function prototypes
 bool RFM69_initialize(uint16_t freqBand, uint8_t nodeID, uint16_t networkID);
@@ -104,5 +104,7 @@ void RFM69_setMode(uint8_t newMode);
 void PrintStruct(void);
 void PrintByteByByte(void);
 void PrintRawBytes(void);
+int16_t RFM69_ReturnRssi(void);
+
 
 #endif

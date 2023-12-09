@@ -138,12 +138,14 @@ int main(void)
 
   typedef struct
   {
-  	unsigned long nodeId; //store this nodeId
-  	unsigned long uptime; //uptime in ms
-  	//float         temp;   //temperature maybe?
+  	uint8_t count1; //store this nodeId
+  	char text[12]; //uptime in ms
   }
   Payload;
   Payload theData;
+  theData.count1 = 0;
+  uint8_t myCount = 0;
+  bool isTransmitter = 0;
 
   //Initalize the radio
   HAL_Delay(10);
@@ -174,32 +176,54 @@ int main(void)
 
 	if (radioInitalized)
 	{
-	  /*
-      // SAMPLE RECEIVE CODE
-	  if (RFM69_ReadDIO0Pin())
+	  if (isTransmitter)
 	  {
-	    RFM69_interruptHandler();
-	  }
+		// SAMPLE TRANSMIT CODE
+		theData.count1++;
+		theData.text[1] = 'H';
+		theData.text[2] = 'e';
+		theData.text[3] = 'l';
+		theData.text[4] = 'l';
+		theData.text[5] = 'o';
+		theData.text[6] = ' ';
+		theData.text[7] = 'W';
+		theData.text[8] = 'o';
+		theData.text[9] = 'r';
+		theData.text[10] = 'l';
+		theData.text[11] = 'd';
+		theData.text[12] = '!';
 
-	  if (RFM69_receiveDone())
+		myCount++;
+
+		RFM69_send(toAddress, (const void *)(&myCount), 1, requestACK);
+
+
+		logBufLen = sprintf(logBuf, "Payload Sent!\r\n");
+		HAL_UART_Transmit(&huart2, (uint8_t *)logBuf, logBufLen, 100);
+
+		HAL_Delay(1000);  // send every ____ milliseconds.
+	  }
+	  else
 	  {
-	    logBufLen = sprintf(logBuf,"Payload Received!\r\n");
-	    HAL_UART_Transmit(&huart2, (uint8_t *)logBuf, logBufLen, 100);
+	    // SAMPLE RECEIVE CODE
+		if (RFM69_ReadDIO0Pin())
+		{
+		  RFM69_interruptHandler();
+		}
 
-	    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0); // turn off LED
+		if (RFM69_receiveDone())
+		{
+		  logBufLen = sprintf(logBuf,"Payload Received!\r\n");
+		  HAL_UART_Transmit(&huart2, (uint8_t *)logBuf, logBufLen, 100);
+
+		  logBufLen = sprintf(logBuf,"Rssi is: %i \r\n", RFM69_ReturnRssi());
+		  HAL_UART_Transmit(&huart2, (uint8_t *)logBuf, logBufLen, 100);
+
+
+		  PrintRawBytes();
+
+		}
 	  }
-	  */
-
-	  // SAMPLE TRANSMIT CODE
-	  theData.nodeId = 20;
-	  theData.uptime = HAL_GetTick();
-	  RFM69_send(toAddress, (const void *)(&theData), sizeof(theData), requestACK);
-
-
-	  logBufLen = sprintf(logBuf, "Payload Sent!\r\n");
-	  HAL_UART_Transmit(&huart2, (uint8_t *)logBuf, logBufLen, 100);
-
-	  HAL_Delay(2000);  // send every ____ milliseconds.
 	}
 	else
 	{
@@ -362,17 +386,11 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, RFM69_RST_Pin|LD3_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : EXAMPLE_IN_Pin */
-  GPIO_InitStruct.Pin = EXAMPLE_IN_Pin;
+  /*Configure GPIO pins : EXAMPLE_IN_Pin RFM69_IRQ_Pin */
+  GPIO_InitStruct.Pin = EXAMPLE_IN_Pin|RFM69_IRQ_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(EXAMPLE_IN_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : RFM69_IRQ_Pin */
-  GPIO_InitStruct.Pin = RFM69_IRQ_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(RFM69_IRQ_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : RFM69_CS_Pin */
   GPIO_InitStruct.Pin = RFM69_CS_Pin;

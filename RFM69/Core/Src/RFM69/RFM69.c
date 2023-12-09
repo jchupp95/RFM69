@@ -43,7 +43,7 @@ uint8_t payloadLen;
 uint8_t ACK_Requested;
 uint8_t ACK_RECEIVED;           // should be polled immediately after sending a packet with ACK request
 uint8_t _mode;
-int16_t rssi;                   // most accurate RSSI during reception (closest to the reception)
+int16_t rssi;// most accurate RSSI during reception (closest to the reception)
 
 uint8_t _address;
 uint8_t _powerLevel = 16; // 31 max
@@ -490,9 +490,9 @@ void RFM69_setHighPower()
   #if (ISRFM69HW == 1) // turning ON
     RFM69_writeReg(REG_PALEVEL, (RFM69_readReg(REG_PALEVEL) & 0x1F) | RF_PALEVEL_PA1_ON | RF_PALEVEL_PA2_ON); // enable P1 & P2 amplifier stages
 
-  #elseif {
+  #else
     RFM69_writeReg(REG_PALEVEL, RF_PALEVEL_PA0_ON | RF_PALEVEL_PA1_OFF | RF_PALEVEL_PA2_OFF | _powerLevel); // enable P0 only
-}
+
   #endif
 }
 
@@ -888,3 +888,9 @@ void PrintRawBytes(void) {
   //sprintf(log_buffer, "datalen %d\r\n", datalen);
   //Log(log_buffer);
 }
+
+int16_t RFM69_ReturnRssi()
+{
+ return rssi;
+}
+
